@@ -23,6 +23,18 @@ import com.aspose.words.DocumentBuilder;
 import com.aspose.words.NodeCollection;
 import com.aspose.words.NodeType;
 import com.aspose.words.Paragraph;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.regex.Pattern;
+import com.aspose.words.IReplacingCallback;
+import com.aspose.words.ReplacingArgs;
+import com.aspose.words.ReplaceAction;
+import com.aspose.words.Run;
+import com.aspose.words.FindReplaceOptions;
+import com.aspose.words.Comment;
+import com.aspose.words.CommentRangeStart;
+import com.aspose.words.CommentRangeEnd;
+import com.aspose.words.Node;
 
 @RestController
 public class RedlineController {
@@ -57,9 +69,25 @@ public class RedlineController {
         return Arrays.asList(text.trim().split("\\s+"));
     }
 
+    // Holds one requested contract change
+    static class ContractModification {
+        private String originalText;
+        private String revisedText;
+        private String comment;
+
+        public String getOriginalText()       { return originalText; }
+        public void   setOriginalText(String v){ this.originalText = v; }
+
+        public String getRevisedText()        { return revisedText; }
+        public void   setRevisedText(String v){ this.revisedText = v; }
+
+        public String getComment()            { return comment; }
+        public void   setComment(String v)    { this.comment = v; }
+    }
+
     public ResponseEntity<?> redline(
             @RequestParam("original") MultipartFile original,
-            @RequestParam(value = "edited", required = false) MultipartFile edited
+            @RequestParam("modifications") String modificationsJson
     ) {
         File tempOriginal = null;
         File outputRedline = null;
@@ -80,27 +108,50 @@ public class RedlineController {
             // Load the document
             doc = new Document(tempOriginal.getPath());
 
+            // Parse the JSON array of requested modifications
+            ObjectMapper mapper = new ObjectMapper();
+            List<ContractModification> modifications = mapper.readValue(
+                    modificationsJson,
+                    new TypeReference<List<ContractModification>>() {}
+            );
+
             // Use helper to generate a minimal redline
             applyMinimalEdits(doc, modifiedDoc -> {
-                try {
-                    // (a) Insert AI‑suggested heading at the top
-                    DocumentBuilder mb = new DocumentBuilder(modifiedDoc);
-                    mb.moveToDocumentStart();
-                    mb.writeln("This is an AI‑suggested edit at the beginning of the document.");
+                for (ContractModification m : modifications) {
+                    Pattern pattern = Pattern.compile(Pattern.quote(m.getOriginalText()), Pattern.CASE_INSENSITIVE);
 
-                    // (b) Replace the specific paragraph in the middle
-                    NodeCollection paragraphs = modifiedDoc.getChildNodes(NodeType.PARAGRAPH, true);
-                    for (Paragraph p : (Iterable<Paragraph>) paragraphs) {
-                        if (p.getText().contains("Here is a paragraph in the middle")) {
-                            p.removeAllChildren();
-                            DocumentBuilder pb = new DocumentBuilder(modifiedDoc);
-                            pb.moveTo(p);
-                            pb.write("Here is the middle paragraph.");
-                            break;
-                        }
+                    try {
+                        FindReplaceOptions options = new FindReplaceOptions();
+                        options.setReplacingCallback(new IReplacingCallback() {
+                            @Override
+                            public int replacing(ReplacingArgs args) throws Exception {
+                                // Create a comment for the matched text
+                                Comment comment = new Comment(modifiedDoc, "AI Reviewer", "AI", new java.util.Date());
+                                comment.getParagraphs().add(new Paragraph(modifiedDoc));
+                                comment.getFirstParagraph().getRuns().add(new Run(modifiedDoc, m.getComment() == null ? "" : m.getComment()));
+
+                                // Create comment range markers
+                                CommentRangeStart commentStart = new CommentRangeStart(modifiedDoc, comment.getId());
+                                CommentRangeEnd commentEnd = new CommentRangeEnd(modifiedDoc, comment.getId());
+
+                                // Get the node containing the text to be replaced
+                                Node currentNode = args.getMatchNode();
+                                
+                                // Insert the comment range markers and comment
+                                currentNode.getParentNode().insertBefore(commentStart, currentNode);
+                                currentNode.getParentNode().insertAfter(commentEnd, currentNode);
+                                currentNode.getParentNode().insertAfter(comment, commentEnd);
+
+                                // Replace the text
+                                args.setReplacement(m.getRevisedText());
+                                return ReplaceAction.REPLACE;
+                            }
+                        });
+
+                        modifiedDoc.getRange().replace(pattern, m.getRevisedText(), options);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error during text replacement: " + e.getMessage(), e);
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException("Failed to apply document modifications", e);
                 }
             });
 
