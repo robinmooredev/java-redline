@@ -23,7 +23,6 @@ import com.aspose.words.Run;
 import com.example.demo.ParagraphFinder;
 import com.example.demo.dto.ContractModification;
 import com.example.demo.dto.RedlineOutput;
-import com.example.demo.dto.ContractModification.Action;
 import com.example.demo.exception.RedlineException;
 import com.example.demo.exception.RedlineException.ErrorCode;
 
@@ -44,7 +43,7 @@ public class RedlineService {
             throw new RedlineException(ErrorCode.INPUT_VALIDATION_ERROR, "Original file cannot be null or empty");
         }
         
-        if (modifications == null || modifications.isEmpty()) {
+        if (modifications.isEmpty()) {
             logger.warn("No modifications provided");
         }
 

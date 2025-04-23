@@ -9,7 +9,8 @@ import com.aspose.words.Paragraph;
 public final class ParagraphFinder {
 
     private static final double LEVENSHTEIN_THRESHOLD = 0.85;
-    private static final double EMBEDDING_THRESHOLD = 0.92;
+    // EMBEDDING_THRESHOLD is commented out as it's currently unused
+    // private static final double EMBEDDING_THRESHOLD = 0.92;
 
     private final Document doc;
     private String headingFilter;
@@ -40,7 +41,7 @@ public final class ParagraphFinder {
                     return p;
                 }
             } catch (Exception e) {
-                continue; // Skip paragraphs that can't be processed
+                // Skip paragraphs that can't be processed
             }
         }
 
@@ -55,7 +56,7 @@ public final class ParagraphFinder {
                     best = p;
                 }
             } catch (Exception e) {
-                continue; // Skip paragraphs that can't be processed
+                // Skip paragraphs that can't be processed
             }
         }
         if (bestScore >= LEVENSHTEIN_THRESHOLD) {
@@ -67,7 +68,7 @@ public final class ParagraphFinder {
         // List<double[]> embeddings = Embeddings.get(paras);     // your caching layer
         // double[] queryVec        = Embeddings.get(needle);
         // int idx = Cosine.bestMatch(queryVec, embeddings);
-        // if (Cosine.score(queryVec, embeddings.get(idx)) >= EMBEDDING_THRESHOLD)
+        // if (Cosine.score(queryVec, embeddings.get(idx)) >= 0.92)
         //     return candidates().get(idx);
         return null;  // or throw
     }
@@ -77,14 +78,13 @@ public final class ParagraphFinder {
         var nodes = doc.getFirstSection().getBody().getChildNodes();
         for (int i = 0; i < nodes.getCount(); i++) {
             var node = nodes.get(i);
-            if (node instanceof Paragraph) {
-                Paragraph p = (Paragraph)node;
+            if (node instanceof Paragraph p) {
                 try {
                     if (headingFilter == null || Normaliser.clean(p).contains(headingFilter)) {
                         result.add(p);
                     }
                 } catch (Exception e) {
-                    continue; // Skip paragraphs that can't be processed
+                    // Skip paragraphs that can't be processed
                 }
             }
         }
