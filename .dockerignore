@@ -1,0 +1,9 @@
+target/
+!target/*.jar
+.git
+.gitignore
+.github
+README.md
+*.zip
+*.docx
+*.pdf

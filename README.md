@@ -114,6 +114,8 @@ The application follows a layered architecture with clear separation of concerns
 
 ## Getting Started
 
+### Running Locally
+
 1. Clone the repository
 2. Build the project (optional):
    ```
@@ -129,6 +131,50 @@ You can also build and run the project in one step with:
 ```
 ./mvnw clean spring-boot:run
 ```
+
+### Using Docker
+
+1. Build the Docker image:
+   ```
+   docker build -t redline-service .
+   ```
+2. Run the container:
+   ```
+   docker run -p 8080:8080 redline-service
+   ```
+3. The service will be available at http://localhost:8080
+
+### Deploying to Railway
+
+1. Push your code with the Dockerfile to GitHub
+2. In Railway, select "New Project" → "Deploy from GitHub repo"
+3. Select your repository
+4. Railway will automatically detect the Dockerfile and build your container
+5. You can configure environment variables via the Railway dashboard
+
+## Testing the API
+
+Two scripts are provided to help test the API:
+
+1. **Create a sample document**:
+   ```
+   ./create-sample-doc.sh
+   ```
+   This creates a sample DOCX document with sections that match the test script.
+   *Requires [pandoc](https://pandoc.org/installing.html) to be installed.*
+
+2. **Test the API endpoint**:
+   ```
+   ./test-api.sh
+   ```
+   This sends a sample request to the API and saves the response to `redline-output.zip`.
+
+You can also use Postman or another API testing tool with these parameters:
+- Method: POST
+- URL: http://localhost:8080/redline
+- Body: form-data with keys:
+  - `file`: [select DOCX file]
+  - `modifications`: [JSON array of modification objects]
 
 ## Technical Notes
 
