@@ -1,0 +1,118 @@
+package com.example.demo;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.aspose.words.Document;
+import com.aspose.words.Paragraph;
+
+public final class ParagraphFinder {
+
+    private static final double LEVENSHTEIN_THRESHOLD = 0.85;
+    private static final double EMBEDDING_THRESHOLD = 0.92;
+
+    private final Document doc;
+    private String headingFilter;
+
+    private ParagraphFinder(Document doc) {
+        this.doc = doc;
+    }
+
+    public static ParagraphFinder of(Document doc) {
+        return new ParagraphFinder(doc);
+    }
+
+    /**
+     * Optional heading scope (makes fuzzy matches safer)
+     */
+    public ParagraphFinder withHeading(String heading) {
+        this.headingFilter = Normaliser.clean(heading);
+        return this;
+    }
+
+    public Paragraph match(String query) {
+        String needle = Normaliser.clean(query);
+
+        /* ---------- PASS 1 : exact-ish ---------- */
+        for (Paragraph p : candidates()) {
+            try {
+                if (Normaliser.clean(p).equals(needle)) {
+                    return p;
+                }
+            } catch (Exception e) {
+                continue; // Skip paragraphs that can't be processed
+            }
+        }
+
+        /* ---------- PASS 2 : fuzzy distance ---------- */
+        Paragraph best = null;
+        double bestScore = 0;
+        for (Paragraph p : candidates()) {
+            try {
+                double sim = calculateSimilarity(needle, Normaliser.clean(p));
+                if (sim > bestScore) {
+                    bestScore = sim;
+                    best = p;
+                }
+            } catch (Exception e) {
+                continue; // Skip paragraphs that can't be processed
+            }
+        }
+        if (bestScore >= LEVENSHTEIN_THRESHOLD) {
+            return best;
+        }
+
+        /* ---------- PASS 3 : embedding search (optional) ---------- */
+        // List<String> paras = candidates().stream().map(Normaliser::clean).toList();
+        // List<double[]> embeddings = Embeddings.get(paras);     // your caching layer
+        // double[] queryVec        = Embeddings.get(needle);
+        // int idx = Cosine.bestMatch(queryVec, embeddings);
+        // if (Cosine.score(queryVec, embeddings.get(idx)) >= EMBEDDING_THRESHOLD)
+        //     return candidates().get(idx);
+        return null;  // or throw
+    }
+
+    private List<Paragraph> candidates() {
+        List<Paragraph> result = new ArrayList<>();
+        var nodes = doc.getFirstSection().getBody().getChildNodes();
+        for (int i = 0; i < nodes.getCount(); i++) {
+            var node = nodes.get(i);
+            if (node instanceof Paragraph) {
+                Paragraph p = (Paragraph)node;
+                try {
+                    if (headingFilter == null || Normaliser.clean(p).contains(headingFilter)) {
+                        result.add(p);
+                    }
+                } catch (Exception e) {
+                    continue; // Skip paragraphs that can't be processed
+                }
+            }
+        }
+        return result;
+    }
+
+    private static double calculateSimilarity(String s1, String s2) {
+        // Simple Levenshtein distance implementation
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+        
+        for (int i = 0; i <= s1.length(); i++) {
+            dp[i][0] = i;
+        }
+        for (int j = 0; j <= s2.length(); j++) {
+            dp[0][j] = j;
+        }
+        
+        for (int i = 1; i <= s1.length(); i++) {
+            for (int j = 1; j <= s2.length(); j++) {
+                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], Math.min(dp[i - 1][j], dp[i][j - 1]));
+                }
+            }
+        }
+        
+        int maxLength = Math.max(s1.length(), s2.length());
+        return maxLength == 0 ? 1.0 : 1.0 - (double)dp[s1.length()][s2.length()] / maxLength;
+    }
+}
