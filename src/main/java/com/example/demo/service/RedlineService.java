@@ -11,6 +11,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,7 @@ import com.aspose.words.Document;
 import com.aspose.words.Paragraph;
 import com.aspose.words.Run;
 import com.example.demo.ParagraphFinder;
+import com.example.demo.config.RedlineConfig;
 import com.example.demo.dto.ContractModification;
 import com.example.demo.dto.RedlineOutput;
 import com.example.demo.exception.RedlineException;
@@ -29,8 +31,13 @@ import com.example.demo.exception.RedlineException.ErrorCode;
 @Service
 public class RedlineService {
     private static final Logger logger = LoggerFactory.getLogger(RedlineService.class);
-    private static final String REVIEWER_NAME = "AI Reviewer";
-    private static final String REVIEWER_INITIALS = "AI";
+    
+    private final RedlineConfig config;
+    
+    @Autowired
+    public RedlineService(RedlineConfig config) {
+        this.config = config;
+    }
 
     /**
      * Process the original document with the given modifications
@@ -52,7 +59,8 @@ public class RedlineService {
 
         try {
             logger.debug("Creating temporary file for original document");
-            tmpOriginal = File.createTempFile("original-", ".docx");
+            tmpOriginal = File.createTempFile(
+                    config.getFile().getOriginalFilePrefix(), ".docx");
             originalFile.transferTo(tmpOriginal);
             logger.debug("Original document saved to {}", tmpOriginal.getAbsolutePath());
 
@@ -63,25 +71,29 @@ public class RedlineService {
             applyMinimalEdits(redlineDoc, d -> applyUserMods(d, modifications));
 
             logger.debug("Saving redline document");
-            tmpRedline = File.createTempFile("redline-", ".docx");
+            tmpRedline = File.createTempFile(
+                    config.getFile().getRedlineFilePrefix(), ".docx");
             redlineDoc.save(tmpRedline.getPath());
 
             logger.debug("Creating clean document (all changes accepted)");
-            tmpClean = File.createTempFile("clean-", ".docx");
+            tmpClean = File.createTempFile(
+                    config.getFile().getCleanFilePrefix(), ".docx");
             Document cleanDoc = (Document) redlineDoc.deepClone(true);
             cleanDoc.acceptAllRevisions();
             cleanDoc.save(tmpClean.getPath());
 
             logger.debug("Creating PDF with markup visible");
-            tmpPdf = File.createTempFile("redline-", ".pdf");
+            tmpPdf = File.createTempFile(
+                    config.getFile().getPdfFilePrefix(), ".pdf");
             redlineDoc.save(tmpPdf.getPath()); // Aspose automatically includes revisions
 
             logger.info("Creating ZIP archive with all output documents");
-            tmpZip = File.createTempFile("redline-output-", ".zip");
+            tmpZip = File.createTempFile(
+                    config.getFile().getZipFilePrefix(), ".zip");
             try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(tmpZip))) {
-                addToZip(zip, tmpRedline, "redline.docx");
-                addToZip(zip, tmpClean, "clean.docx");
-                addToZip(zip, tmpPdf, "redline.pdf");
+                addToZip(zip, tmpRedline, config.getFile().getRedlineFilename());
+                addToZip(zip, tmpClean, config.getFile().getCleanFilename());
+                addToZip(zip, tmpPdf, config.getFile().getPdfFilename());
             }
 
             byte[] zipContent = Files.readAllBytes(tmpZip.toPath());
@@ -110,11 +122,11 @@ public class RedlineService {
      * clone, then asks Aspose to compute the minimal set of tracked changes and
      * write them back into <code>original</code>.
      */
-    private static void applyMinimalEdits(Document original, java.util.function.Consumer<Document> editAction) {
+    private void applyMinimalEdits(Document original, java.util.function.Consumer<Document> editAction) {
         try {
             Document clone = (Document) original.deepClone(true);
             editAction.accept(clone);
-            original.compare(clone, REVIEWER_NAME, new Date());
+            original.compare(clone, config.getDocument().getReviewerName(), new Date());
         } catch (Exception e) {
             logger.error("Failed to compare documents for change tracking", e);
             throw new RedlineException(ErrorCode.DOCUMENT_PROCESSING_ERROR, "Failed to compare documents", e);
@@ -124,7 +136,7 @@ public class RedlineService {
     /**
      * Apply each user request to <code>doc</code> (the clone).
      */
-    private static void applyUserMods(Document doc, List<ContractModification> mods) {
+    private void applyUserMods(Document doc, List<ContractModification> mods) {
         for (ContractModification m : mods) {
             try {
                 logger.debug("Applying {} modification", m.getAction());
@@ -148,7 +160,7 @@ public class RedlineService {
     }
 
     /* ---------- individual actions ---------- */
-    private static void handleInsert(Document doc, ContractModification m) {
+    private void handleInsert(Document doc, ContractModification m) {
         logger.debug("Handling INSERT modification with section heading: {}", 
                 m.getSectionHeading() != null ? m.getSectionHeading() : "none");
         
@@ -166,7 +178,7 @@ public class RedlineService {
         attachComment(p, m.getComment(), doc);
     }
 
-    private static void handleDelete(Document doc, ContractModification m) {
+    private void handleDelete(Document doc, ContractModification m) {
         logger.debug("Handling DELETE modification with section heading: {}", 
                 m.getSectionHeading() != null ? m.getSectionHeading() : "none");
         
@@ -181,7 +193,7 @@ public class RedlineService {
         attachComment((Paragraph) target.getPreviousSibling(), m.getComment(), doc);
     }
 
-    private static void handleModify(Document doc, ContractModification m) {
+    private void handleModify(Document doc, ContractModification m) {
         logger.debug("Handling MODIFY modification with section heading: {}", 
                 m.getSectionHeading() != null ? m.getSectionHeading() : "none");
         
@@ -197,7 +209,15 @@ public class RedlineService {
     }
 
     /* ---------- helpers ---------- */
-    private static Paragraph findParagraph(Document doc, String heading, String paraText) {
+    
+    /**
+     * Get the configured ZIP filename for the response
+     */
+    public String getZipFilename() {
+        return config.getFile().getZipFilename();
+    }
+    
+    private Paragraph findParagraph(Document doc, String heading, String paraText) {
         if (paraText == null && heading == null) {
             logger.warn("Both paragraph text and heading are null");
             return null;
@@ -222,7 +242,7 @@ public class RedlineService {
         return result;
     }
 
-    private static void attachComment(Paragraph anchor, String commentText, Document doc) {
+    private void attachComment(Paragraph anchor, String commentText, Document doc) {
         if (anchor == null) {
             logger.debug("Cannot attach comment: anchor paragraph is null");
             return;
@@ -234,7 +254,10 @@ public class RedlineService {
         
         logger.debug("Attaching comment: {}", commentText);
         try {
-            Comment c = new Comment(doc, REVIEWER_NAME, REVIEWER_INITIALS, new Date());
+            Comment c = new Comment(doc, 
+                    config.getDocument().getReviewerName(), 
+                    config.getDocument().getReviewerInitials(), 
+                    new Date());
             c.getParagraphs().add(new Paragraph(doc));
             c.getFirstParagraph().getRuns().add(new Run(doc, commentText));
             CommentRangeStart start = new CommentRangeStart(doc, c.getId());
@@ -248,14 +271,14 @@ public class RedlineService {
         }
     }
 
-    private static void addToZip(ZipOutputStream zip, File f, String entryName) throws IOException {
+    private void addToZip(ZipOutputStream zip, File f, String entryName) throws IOException {
         logger.debug("Adding {} to ZIP archive", entryName);
         zip.putNextEntry(new ZipEntry(entryName));
         Files.copy(f.toPath(), zip);
         zip.closeEntry();
     }
 
-    private static void quietlyDelete(File... files) {
+    private void quietlyDelete(File... files) {
         for (File f : files) {
             if (f != null && f.exists()) {
                 try {

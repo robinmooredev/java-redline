@@ -84,7 +84,7 @@ public class RedlineController {
             // Return ZIP file
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "redline-output.zip");
+            headers.setContentDispositionFormData("attachment", redlineService.getZipFilename());
             
             logger.info("Successfully processed redline request");
             return ResponseEntity.ok().headers(headers).body(output.getZipContent());

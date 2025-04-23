@@ -3,14 +3,22 @@ package com.example.demo;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 import com.aspose.words.Document;
 import com.aspose.words.Paragraph;
+import com.example.demo.config.RedlineConfig;
 
+@Component
 public final class ParagraphFinder {
 
-    private static final double LEVENSHTEIN_THRESHOLD = 0.85;
-    // EMBEDDING_THRESHOLD is commented out as it's currently unused
-    // private static final double EMBEDDING_THRESHOLD = 0.92;
+    private static RedlineConfig config;
+    
+    @Autowired
+    public ParagraphFinder(RedlineConfig config) {
+        ParagraphFinder.config = config;
+    }
 
     private final Document doc;
     private String headingFilter;
@@ -59,17 +67,19 @@ public final class ParagraphFinder {
                 // Skip paragraphs that can't be processed
             }
         }
-        if (bestScore >= LEVENSHTEIN_THRESHOLD) {
+        if (bestScore >= config.getParagraphMatching().getLevenshteinThreshold()) {
             return best;
         }
 
         /* ---------- PASS 3 : embedding search (optional) ---------- */
-        // List<String> paras = candidates().stream().map(Normaliser::clean).toList();
-        // List<double[]> embeddings = Embeddings.get(paras);     // your caching layer
-        // double[] queryVec        = Embeddings.get(needle);
-        // int idx = Cosine.bestMatch(queryVec, embeddings);
-        // if (Cosine.score(queryVec, embeddings.get(idx)) >= 0.92)
-        //     return candidates().get(idx);
+        if (config.getParagraphMatching().isUseEmbeddingSearch()) {
+            // List<String> paras = candidates().stream().map(Normaliser::clean).toList();
+            // List<double[]> embeddings = Embeddings.get(paras);     // your caching layer
+            // double[] queryVec        = Embeddings.get(needle);
+            // int idx = Cosine.bestMatch(queryVec, embeddings);
+            // if (Cosine.score(queryVec, embeddings.get(idx)) >= config.getParagraphMatching().getEmbeddingThreshold())
+            //     return candidates().get(idx);
+        }
         return null;  // or throw
     }
 
