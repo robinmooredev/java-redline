@@ -18,7 +18,7 @@ MODIFICATIONS='[
     "action": "MODIFY",
     "sectionHeading": "Terms and Conditions",
     "oldParagraph": "The service is provided as-is without warranty.",
-    "newParagraph": "The service is provided as-is without any warranty, express or implied.",
+    "newParagraph": "The Services are provided as-is without any warranty, express or implied.",
     "comment": "Clarified warranty disclaimer"
   },
   {
