@@ -20,7 +20,7 @@ public final class ParagraphFinder {
         ParagraphFinder.config = config;
     }
 
-    private final Document doc;
+    private Document doc;
     private String headingFilter;
 
     private ParagraphFinder(Document doc) {
@@ -86,16 +86,39 @@ public final class ParagraphFinder {
     private List<Paragraph> candidates() {
         List<Paragraph> result = new ArrayList<>();
         var nodes = doc.getFirstSection().getBody().getChildNodes();
+
+        if (headingFilter == null) {
+            for (int i = 0; i < nodes.getCount(); i++) {
+                var node = nodes.get(i);
+                if (node instanceof Paragraph p) {
+                    result.add(p);
+                }
+            }
+            return result;
+        }
+
+        // Find the heading paragraph, then collect all paragraphs under it
+        // until the next heading of the same or higher level
+        boolean inSection = false;
         for (int i = 0; i < nodes.getCount(); i++) {
             var node = nodes.get(i);
-            if (node instanceof Paragraph p) {
-                try {
-                    if (headingFilter == null || Normaliser.clean(p).contains(headingFilter)) {
+            if (!(node instanceof Paragraph p)) continue;
+            try {
+                String cleaned = Normaliser.clean(p);
+                if (!inSection) {
+                    if (cleaned.contains(headingFilter)) {
+                        inSection = true;
                         result.add(p);
                     }
-                } catch (Exception e) {
-                    // Skip paragraphs that can't be processed
+                } else {
+                    // Stop at the next section heading (lines like "3. ...", "4. ...")
+                    if (cleaned.matches("^\\d+\\.\\s.*") && !cleaned.contains(headingFilter)) {
+                        break;
+                    }
+                    result.add(p);
                 }
+            } catch (Exception e) {
+                // Skip paragraphs that can't be processed
             }
         }
         return result;

@@ -1,0 +1,23 @@
+[
+  {
+    "action": "MODIFY",
+    "sectionHeading": "2. Obligations of the Receiving Party",
+    "oldParagraph": "The Receiving Party agrees to hold all Confidential Information in strict confidence and shall not disclose, publish, or otherwise disseminate any Confidential Information to any third party without the prior written consent of the Disclosing Party. The Receiving Party shall use the Confidential Information solely for the purpose of evaluating or engaging in a potential business relationship with the Disclosing Party (the \"Purpose\").",
+    "newParagraph": "Each party (when disclosing, the \"Disclosing Party\" and when receiving, the \"Receiving Party\") agrees to hold all Confidential Information of the other party in strict confidence and shall not disclose, publish, or otherwise disseminate any Confidential Information to any third party without the prior written consent of the Disclosing Party. Each party shall use the other party's Confidential Information solely for the purpose of evaluating or engaging in a potential business relationship between the parties (the \"Purpose\").",
+    "comment": "We propose making the confidentiality obligations mutual. This is standard market practice for NDAs entered into between parties who will both be sharing sensitive information during discussions. Mutual obligations ensure balanced protection for both sides and reflect the collaborative nature of the relationship."
+  },
+  {
+    "action": "MODIFY",
+    "sectionHeading": "3. Term and Duration",
+    "oldParagraph": "This Agreement shall commence on the Effective Date and shall remain in effect in perpetuity. The obligations of the Receiving Party with respect to the Confidential Information shall survive in perpetuity, regardless of any termination or expiration of the business relationship between the parties.",
+    "newParagraph": "This Agreement shall commence on the Effective Date and shall remain in effect for a period of two (2) years, unless earlier terminated by either party upon thirty (30) days' written notice. The obligations of each party with respect to the Confidential Information shall survive for a period of three (3) years following the expiration or termination of this Agreement.",
+    "comment": "Perpetual confidentiality obligations are difficult to manage and enforce in practice. A two-year term with a three-year survival period for confidentiality obligations is well within market norms and provides robust protection while giving both parties a clear and manageable timeline."
+  },
+  {
+    "action": "INSERT",
+    "sectionHeading": "4. Return of Materials",
+    "oldParagraph": "",
+    "newParagraph": "Notwithstanding the foregoing, nothing in this Agreement shall prevent either party from using in its business activities any general knowledge, skills, experience, ideas, concepts, know-how, or techniques that are retained in the unaided memories of its personnel who have had access to Confidential Information, provided that this exception shall not be deemed a license under any patent, copyright, or other intellectual property right of the Disclosing Party.",
+    "comment": "This residual knowledge clause is standard in technology-related NDAs and reflects practical reality — people cannot selectively forget what they have learned. This carve-out protects both parties' ability to continue normal business operations while still safeguarding documented Confidential Information and intellectual property rights."
+  }
+]

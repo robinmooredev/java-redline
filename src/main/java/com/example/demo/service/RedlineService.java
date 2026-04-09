@@ -230,7 +230,7 @@ public class RedlineService {
         }
         
         // If we only have a heading, search for that directly
-        String searchText = paraText != null ? paraText : heading;
+        String searchText = (paraText != null && !paraText.isBlank()) ? paraText : heading;
         logger.debug("Searching for paragraph: {}", searchText);
         
         Paragraph result = finder.match(searchText);
@@ -264,7 +264,7 @@ public class RedlineService {
             CommentRangeEnd end = new CommentRangeEnd(doc, c.getId());
             anchor.insertBefore(start, anchor.getFirstChild());
             anchor.appendChild(end);
-            anchor.getParentNode().insertAfter(c, anchor);
+            anchor.appendChild(c);
         } catch (Exception e) {
             logger.warn("Failed to attach comment", e);
             // Non-critical operation, don't throw

@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### OS ###
+.DS_Store
+
+### Test output ###
+redline-output.zip
+redline-output/
