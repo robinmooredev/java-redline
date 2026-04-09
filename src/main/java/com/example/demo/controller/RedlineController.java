@@ -96,6 +96,37 @@ public class RedlineController {
         }
     }
     
+    @PostMapping("/accept")
+    public ResponseEntity<?> accept(
+            @RequestParam("file") MultipartFile file) {
+
+        logger.info("Received accept-all-changes request");
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File cannot be empty");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !isDocxContentType(contentType)) {
+            return ResponseEntity.badRequest().body("Only DOCX files are supported");
+        }
+
+        try {
+            byte[] cleanDoc = redlineService.acceptAllChanges(file);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "accepted.docx");
+
+            logger.info("Successfully accepted all changes");
+            return ResponseEntity.ok().headers(headers).body(cleanDoc);
+        } catch (Exception ex) {
+            logger.error("Unexpected error accepting changes", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Unexpected error: " + ex.getMessage());
+        }
+    }
+
     /**
      * Exception handler for RedlineException
      */

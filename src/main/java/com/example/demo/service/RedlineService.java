@@ -116,6 +116,39 @@ public class RedlineService {
         }
     }
 
+    /**
+     * Accept all tracked changes in a document and return the clean DOCX bytes.
+     */
+    public byte[] acceptAllChanges(MultipartFile file) {
+        logger.info("Processing accept-all-changes request");
+
+        File tmpInput = null;
+        try {
+            tmpInput = File.createTempFile("accept-input-", ".docx");
+            file.transferTo(tmpInput);
+
+            Document doc = new Document(tmpInput.getPath());
+            doc.acceptAllRevisions();
+
+            File tmpOutput = File.createTempFile("accept-output-", ".docx");
+            try {
+                doc.save(tmpOutput.getPath());
+                byte[] result = Files.readAllBytes(tmpOutput.toPath());
+                logger.info("Accepted all revisions, output size: {} bytes", result.length);
+                return result;
+            } finally {
+                quietlyDelete(tmpOutput);
+                doc.cleanup();
+            }
+        } catch (Exception ex) {
+            logger.error("Failed to accept revisions", ex);
+            throw new RedlineException(ErrorCode.DOCUMENT_PROCESSING_ERROR,
+                    "Failed to accept revisions: " + ex.getMessage(), ex);
+        } finally {
+            quietlyDelete(tmpInput);
+        }
+    }
+
     /* ---------- Core modification logic ---------- */
     /**
      * Clones <code>original</code>, lets <code>editAction</code> mutate the
