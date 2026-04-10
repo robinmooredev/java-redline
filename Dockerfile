@@ -11,4 +11,4 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "if [ -n \"$ASPOSE_LICENSE_B64\" ]; then echo \"$ASPOSE_LICENSE_B64\" | base64 -d > /app/Aspose.WordsforJava.lic; fi && java -jar app.jar"]
